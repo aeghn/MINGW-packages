@@ -1,0 +1,134 @@
+From 9210558367d9e18718a50cf325988a870411ea81 Mon Sep 17 00:00:00 2001
+From: aeghn <aeghn@outlook.com>
+Date: Tue, 7 Mar 2023 08:58:35 +0800
+Subject: [PATCH] build for windows
+
+---
+ meson.build                      | 5 ++++-
+ meson/post_install.py            | 4 ++--
+ src/Application.vala             | 4 ++++
+ src/DrawArea.vala                | 2 +-
+ src/MainWindow.vala              | 5 ++++-
+ src/exports/ExportXMind2021.vala | 4 ++--
+ src/exports/ExportXMind8.vala    | 4 ++--
+ 7 files changed, 19 insertions(+), 9 deletions(-)
+
+diff --git a/meson.build b/meson.build
+index 4a7b056..4b5c618 100644
+--- a/meson.build
++++ b/meson.build
+@@ -90,7 +90,10 @@ e = executable('com.github.phase1geo.minder',
+     vala_args: [
+         meson.source_root() + '/vapi/libmarkdown.vapi'
+     ],
+-    install : true
++    install : true,
++    # Avoid the annoying cmd window
++    # Copied from Akira's meson.build
++    win_subsystem: 'windows'
+ )
+ 
+ #test('tests', e, args : ['--run-tests'])
+diff --git a/meson/post_install.py b/meson/post_install.py
+index b2847f8..ae9a0e3 100755
+--- a/meson/post_install.py
++++ b/meson/post_install.py
+@@ -14,5 +14,5 @@ if not environ.get('DESTDIR'):
+     subprocess.call(['gtk-update-icon-cache', '-qtf', path.join(datadir, 'icons', 'hicolor')])
+     print('Compiling mime types…')
+     subprocess.call(['update-mime-database', path.join(datadir, 'mime')])
+-    print('Updating application database…')
+-    subprocess.call(['update-desktop-database', path.join(datadir, 'applications')])
++#    print('Updating application database…')
++#    subprocess.call(['update-desktop-database', path.join(datadir, 'applications')])
+diff --git a/src/Application.vala b/src/Application.vala
+index 7344d17..17e9394 100644
+--- a/src/Application.vala
++++ b/src/Application.vala
+@@ -59,6 +59,10 @@ public class Minder : Granite.Application {
+     /* Add the application-specific icons */
+     weak IconTheme default_theme = IconTheme.get_default();
+     default_theme.add_resource_path( "/com/github/phase1geo/minder" );
++	
++    Gtk.Settings.get_default().set_property("gtk-theme-name", "io.elementary.stylesheet.blueberry");
++    Gtk.Settings.get_default().set_property("gtk-icon-theme-name", "elementary");
++    Gtk.Settings.get_default().set_property("gtk-im-module", "gtk-im-context-simple");
+ 
+     /* Create the main window */
+     appwin = new MainWindow( this, settings );
+diff --git a/src/DrawArea.vala b/src/DrawArea.vala
+index 099247d..a5e8ceb 100644
+--- a/src/DrawArea.vala
++++ b/src/DrawArea.vala
+@@ -92,7 +92,7 @@ public class DrawArea : Gtk.DrawingArea {
+   private uint?            _auto_save_id = null;
+   private ImageEditor      _image_editor;
+   private UrlEditor        _url_editor;
+-  private IMMulticontext   _im_context;
++  private IMContext        _im_context;
+   private bool             _debug        = true;
+   private bool             _focus_mode   = false;
+   private double           _focus_alpha  = 0.05;
+diff --git a/src/MainWindow.vala b/src/MainWindow.vala
+index dc2a0a2..c0382ad 100644
+--- a/src/MainWindow.vala
++++ b/src/MainWindow.vala
+@@ -127,7 +127,10 @@ public class MainWindow : Hdy.ApplicationWindow {
+   /* Create the main window UI */
+   public MainWindow( Gtk.Application app, GLib.Settings settings ) {
+ 
+-    Object( application: app );
++	Object(
++		application: app,
++		icon_name: "com.github.phase1geo.minder"
++	);
+ 
+     _settings = settings;
+ 
+diff --git a/src/exports/ExportXMind2021.vala b/src/exports/ExportXMind2021.vala
+index d41d823..fd6bfbd 100644
+--- a/src/exports/ExportXMind2021.vala
++++ b/src/exports/ExportXMind2021.vala
+@@ -83,7 +83,7 @@ public class ExportXMind2021 : Export {
+   public override bool export( string fname, DrawArea da ) {
+ 
+     /* Create temporary directory to place contents in */
+-    var dir = DirUtils.mkdtemp( "minderXXXXXX" );
++    var dir = DirUtils.make_tmp( null );
+ 
+     var file_list = new FileItems();
+ 
+@@ -572,7 +572,7 @@ public class ExportXMind2021 : Export {
+     stdout.printf( "In XMind 2021 import\n" );
+ 
+     /* Create temporary directory to place contents in */
+-    var dir = DirUtils.mkdtemp( "minderXXXXXX" );
++    var dir = DirUtils.make_tmp( null );
+ 
+     stdout.printf( "In XMind2021 import, dir: %s\n", dir );
+ 
+diff --git a/src/exports/ExportXMind8.vala b/src/exports/ExportXMind8.vala
+index 973b3d5..74da104 100644
+--- a/src/exports/ExportXMind8.vala
++++ b/src/exports/ExportXMind8.vala
+@@ -84,7 +84,7 @@ public class ExportXMind8 : Export {
+   public override bool export( string fname, DrawArea da ) {
+ 
+     /* Create temporary directory to place contents in */
+-    var dir = DirUtils.mkdtemp( "minderXXXXXX" );
++    var dir = DirUtils.make_tmp( null );
+ 
+     var styles    = new Array<Xml.Node*>();
+     var file_list = new FileItems();
+@@ -605,7 +605,7 @@ public class ExportXMind8 : Export {
+   public override bool import( string fname, DrawArea da ) {
+ 
+     /* Create temporary directory to place contents in */
+-    var dir = DirUtils.mkdtemp( "minderXXXXXX" );
++    var dir = DirUtils.make_tmp( null );
+ 
+     /* Unarchive the files */
+     unarchive_contents( fname, dir );
+-- 
+2.40.0
+
